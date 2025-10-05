@@ -6,9 +6,9 @@ This keeps the system clean and avoids filling up your main root disk.
 ---
 
 ## 1. Prepare the Virtual Machine
-1. Create a new VM (e.g., Debian 12, 2–4 vCPUs, 6–8 GB RAM).
-2. Add a second disk (VDI, dynamically allocated, ~30–50 GB):
-   - VM ▸ **Settings** ▸ **Storage** ▸ Controller SATA ▸ **Add Hard Disk…**
+1. Create a new VM (e.g., Debian 13, 2–4 vCPUs, 4–8 GB RAM).
+2. Add a second disk (VDI, dynamically allocated, 30 GB):
+   - VM ▸ **Settings** ▸ **Storage** ▸ Controller SATA ▸ **Add Hard Disk…** (50 GB)
 3. Boot the VM, install the OS, and update packages:
    ```bash
    sudo apt update && sudo apt -y upgrade
@@ -27,23 +27,26 @@ Partition, format, and mount:
 ```bash
 sudo parted /dev/sdb --script mklabel gpt
 sudo parted /dev/sdb --script mkpart build ext4 1MiB 100%
+lsblk -o NAME,SIZE,TYPE,MOUNTPOINT
 sudo mkfs.ext4 -L KBUILD /dev/sdb1
 
 sudo mkdir -p /build
 sudo blkid /dev/sdb1   # copy the UUID
 echo 'UUID=<PASTE-UUID>  /build  ext4  defaults,noatime  0  2' | sudo tee -a /etc/fstab
+sudo systemctl daemon-reload
 sudo mount -a
+sudo mount
 sudo chown -R $USER:$USER /build
 ```
 
 ---
 
 ## 3. Install Build Prerequisites
-**Debian/Ubuntu:**
+
 ```bash
 sudo apt -y install \
   bc bison flex libelf-dev libssl-dev libncurses-dev dwarves \
-  fakeroot rsync ccache
+  fakeroot rsync ccache build-essential
 ```
 
 Enable `ccache`:
@@ -52,44 +55,22 @@ echo 'export PATH="/usr/lib/ccache:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-**Fedora/RHEL:**
-```bash
-sudo dnf -y groupinstall "Development Tools"
-sudo dnf -y install ncurses-devel bison flex elfutils-libelf-devel openssl-devel dwarves bc ccache
-```
-
 ---
 
 ## 4. Fetch Kernel Sources
-**Option A – Tarball:**
+
 ```bash
 mkdir -p ~/src && cd ~/src
 wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.10.tar.xz
 tar -xf linux-6.10.tar.xz
 cd linux-6.10
 ```
-
-**Option B – Git:**
-```bash
-mkdir -p ~/src && cd ~/src
-git clone --depth=1 https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
-cd linux
-# (Optional) checkout a tag: git fetch --tags && git checkout v6.10
-```
-
 ---
 
 ## 5. Configure the Kernel
-Use your distro config:
-```bash
-cp /boot/config-$(uname -r) .config
-yes "" | make oldconfig
-```
 
 Or start fresh:
 ```bash
-make defconfig
-# or
 make menuconfig
 ```
 
