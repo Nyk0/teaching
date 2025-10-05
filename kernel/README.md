@@ -1,0 +1,176 @@
+# Hands-on: Compiling a Linux Kernel in a VirtualBox VM with a Separate Build Disk
+
+This lab walks you through compiling a Linux kernel inside a VirtualBox VM, using a **second virtual disk** to store all build artifacts.  
+This keeps the system clean and avoids filling up your main root disk.
+
+---
+
+## 1. Prepare the Virtual Machine
+1. Create a new VM (e.g., Debian 12, 2–4 vCPUs, 6–8 GB RAM).
+2. Add a second disk (VDI, dynamically allocated, ~30–50 GB):
+   - VM ▸ **Settings** ▸ **Storage** ▸ Controller SATA ▸ **Add Hard Disk…**
+3. Boot the VM, install the OS, and update packages:
+   ```bash
+   sudo apt update && sudo apt -y upgrade
+   sudo apt -y install build-essential git
+   ```
+
+---
+
+## 2. Prepare the Extra Disk
+Check the new disk (likely `/dev/sdb`):
+```bash
+lsblk -o NAME,SIZE,TYPE,MOUNTPOINT
+```
+
+Partition, format, and mount:
+```bash
+sudo parted /dev/sdb --script mklabel gpt
+sudo parted /dev/sdb --script mkpart build ext4 1MiB 100%
+sudo mkfs.ext4 -L KBUILD /dev/sdb1
+
+sudo mkdir -p /build
+sudo blkid /dev/sdb1   # copy the UUID
+echo 'UUID=<PASTE-UUID>  /build  ext4  defaults,noatime  0  2' | sudo tee -a /etc/fstab
+sudo mount -a
+sudo chown -R $USER:$USER /build
+```
+
+---
+
+## 3. Install Build Prerequisites
+**Debian/Ubuntu:**
+```bash
+sudo apt -y install \
+  bc bison flex libelf-dev libssl-dev libncurses-dev dwarves \
+  fakeroot rsync ccache
+```
+
+Enable `ccache`:
+```bash
+echo 'export PATH="/usr/lib/ccache:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**Fedora/RHEL:**
+```bash
+sudo dnf -y groupinstall "Development Tools"
+sudo dnf -y install ncurses-devel bison flex elfutils-libelf-devel openssl-devel dwarves bc ccache
+```
+
+---
+
+## 4. Fetch Kernel Sources
+**Option A – Tarball:**
+```bash
+mkdir -p ~/src && cd ~/src
+wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.10.tar.xz
+tar -xf linux-6.10.tar.xz
+cd linux-6.10
+```
+
+**Option B – Git:**
+```bash
+mkdir -p ~/src && cd ~/src
+git clone --depth=1 https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+cd linux
+# (Optional) checkout a tag: git fetch --tags && git checkout v6.10
+```
+
+---
+
+## 5. Configure the Kernel
+Use your distro config:
+```bash
+cp /boot/config-$(uname -r) .config
+yes "" | make oldconfig
+```
+
+Or start fresh:
+```bash
+make defconfig
+# or
+make menuconfig
+```
+
+---
+
+## 6. Build on the Separate Disk
+Set up out-of-tree build:
+```bash
+mkdir -p /build/linux-build /build/tmp
+export TMPDIR=/build/tmp
+make O=/build/linux-build -j"$(nproc)"
+```
+
+Notes:
+- `O=...` keeps build artifacts out of the source tree.
+- `TMPDIR` ensures temporary files go on the extra disk.
+
+---
+
+## 7. Install Kernel + Modules
+```bash
+sudo make O=/build/linux-build modules_install
+sudo make O=/build/linux-build install
+```
+
+Update bootloader (if needed):
+```bash
+sudo update-initramfs -c -k "$(make O=/build/linux-build kernelrelease)"
+sudo update-grub
+```
+
+---
+
+## 8. Reboot and Verify
+```bash
+uname -r
+```
+You should see your new kernel version.
+
+---
+
+## 9. Optional: Package as .deb
+Instead of manual installation, produce Debian packages:
+```bash
+fakeroot make -j"$(nproc)" deb-pkg
+sudo dpkg -i ../linux-image-*.deb ../linux-headers-*.deb
+sudo update-grub
+```
+
+This makes uninstallation easier.
+
+---
+
+## 10. Cleanup / Repeatability
+Reset the build directory:
+```bash
+rm -rf /build/linux-build /build/tmp
+mkdir -p /build/linux-build /build/tmp
+```
+
+For multiple students, snapshot the VM **after step 3**.
+
+---
+
+## 11. Troubleshooting
+- **Kernel not listed in GRUB:** free up `/boot`, re-run `update-grub`.
+- **Build errors:** check missing deps (step 3).
+- **Guest Additions broken:** reinstall after kernel update.
+- **Too slow:** reduce `-j`, enable `ccache`, or use `make localmodconfig`.
+- **Secure Boot issues:** disable in VM firmware or sign modules (advanced).
+
+---
+
+## 12. Extra Tips
+- Add a custom suffix in version string:
+  ```bash
+  scripts/config --set-str LOCALVERSION "-student01"
+  ```
+- Store all kernel artifacts in `/build` to keep system clean.
+- Use `.deb` packaging for easy install/uninstall.
+
+---
+
+✅ You now have a working, repeatable kernel build workflow in a VirtualBox VM, isolated on a separate disk.
