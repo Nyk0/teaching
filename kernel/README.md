@@ -61,9 +61,9 @@ source ~/.bashrc
 
 ```bash
 mkdir -p ~/src && cd ~/src
-wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.10.tar.xz
-tar -xf linux-6.10.tar.xz
-cd linux-6.10
+wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.17.tar.xz
+tar -xf linux-6.17.tar.xz
+cd linux-6.17
 ```
 ---
 
@@ -71,6 +71,8 @@ cd linux-6.10
 
 Or start fresh:
 ```bash
+mkdir -p /build/linux-build /build/tmp
+export TMPDIR=/build/tmp
 make O=/build/linux-build menuconfig
 ```
 
@@ -80,13 +82,15 @@ Check the following parameters:
 - Disable "Enable loadable module support" / "Automatically sign all modules".
 - Disable "Security Options" / "Digital signature verification using multiple keyrings".
 
+Customize kernel label:
+- General setup → Local version - append to kernel release
+- CONFIG_LOCALVERSION="-custom" in /build/linux-build/.config
+
 ---
 
 ## 6. Build on the Separate Disk
 Set up out-of-tree build:
 ```bash
-mkdir -p /build/linux-build /build/tmp
-export TMPDIR=/build/tmp
 make O=/build/linux-build -j"$(nproc)"
 ```
 
