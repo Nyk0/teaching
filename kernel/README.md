@@ -136,28 +136,3 @@ Reset the build directory:
 rm -rf /build/linux-build /build/tmp
 mkdir -p /build/linux-build /build/tmp
 ```
-
-For multiple students, snapshot the VM **after step 3**.
-
----
-
-## 11. Troubleshooting
-- **Kernel not listed in GRUB:** free up `/boot`, re-run `update-grub`.
-- **Build errors:** check missing deps (step 3).
-- **Guest Additions broken:** reinstall after kernel update.
-- **Too slow:** reduce `-j`, enable `ccache`, or use `make localmodconfig`.
-- **Secure Boot issues:** disable in VM firmware or sign modules (advanced).
-
----
-
-## 12. Extra Tips
-- Add a custom suffix in version string:
-  ```bash
-  scripts/config --set-str LOCALVERSION "-student01"
-  ```
-- Store all kernel artifacts in `/build` to keep system clean.
-- Use `.deb` packaging for easy install/uninstall.
-
----
-
-✅ You now have a working, repeatable kernel build workflow in a VirtualBox VM, isolated on a separate disk.
