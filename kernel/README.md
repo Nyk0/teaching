@@ -71,8 +71,14 @@ cd linux-6.10
 
 Or start fresh:
 ```bash
-make menuconfig
+make O=/build/linux-build menuconfig
 ```
+
+Check the following parameters:
+- Go to "Cryptographic API" / "Certificates for signature checking" and set "Additional X.509 keys for default system keyring" to blank.
+- Verify that "File name or PKCS#11 URI of module signing key" is also set to blank.
+- Disable "Enable loadable module support" / "Automatically sign all modules".
+- Disable "Security Options" / "Digital signature verification using multiple keyrings".
 
 ---
 
