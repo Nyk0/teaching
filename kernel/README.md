@@ -156,12 +156,3 @@ uname -r
 ```
 
 This makes uninstallation and distribution easier.
-
----
-
-## 10. Cleanup / Repeatability
-Reset the build directory:
-```bash
-rm -rf /build/linux-build /build/tmp
-mkdir -p /build/linux-build /build/tmp
-```
