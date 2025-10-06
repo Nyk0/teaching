@@ -130,7 +130,7 @@ sudo dpkg -i ../linux-image-*.deb ../linux-headers-*.deb
 sudo update-grub
 ```
 
-This makes uninstallation easier.
+This makes uninstallation and distribution easier.
 
 ---
 
