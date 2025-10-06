@@ -12,7 +12,6 @@ This keeps the system clean and avoids filling up your main root disk.
 3. Boot the VM, install the OS, and update packages:
    ```bash
    sudo apt update && sudo apt -y upgrade
-   sudo apt -y install build-essential git
    ```
 
 ---
@@ -65,11 +64,14 @@ wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.17.tar.xz
 tar -xf linux-6.17.tar.xz
 cd linux-6.17
 ```
+
+> [!WARNING]
+> Command of this tutorial are relatives to ~/src
+
 ---
 
 ## 5. Configure the Kernel
 
-Or start fresh:
 ```bash
 mkdir -p /build/linux-build /build/tmp
 export TMPDIR=/build/tmp
@@ -125,9 +127,32 @@ You should see your new kernel version.
 ## 9. Optional: Package as .deb
 Instead of manual installation, produce Debian packages:
 ```bash
-fakeroot make -j"$(nproc)" deb-pkg
+# Install .deb building dependencies
+sudo apt -y install git debhelper-compat libdw-dev
+
+# Create a "fake" git repository
+git init
+git add .
+git config --global user.name "student"
+git commit -m "initial import"
+
+# Create package
+fakeroot make O=/build/linux-build -j"$(nproc)" deb-pkg
+
+# Clean current kernel
+sudo rm -rf /usr/lib/modules/6.17.0-custom
+sudo rm -rf /boot/*6.17*
+sudo update-grub
+sudo reboot
+
+# Check current kernel (should be previous one)
+uname -r
+
+# Install new kernel
 sudo dpkg -i ../linux-image-*.deb ../linux-headers-*.deb
 sudo update-grub
+sudo reboot
+uname -r
 ```
 
 This makes uninstallation and distribution easier.
