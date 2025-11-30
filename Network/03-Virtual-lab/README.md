@@ -207,7 +207,8 @@ user@dnsrecur:~$ sudo grep bind /var/log/syslog
 ...
 ```
 
-
+Test resolution:
+```bash
 user@dnsrecur:~$ host www.google.com 127.0.0.1
 Using domain server:
 Name: 127.0.0.1
@@ -227,66 +228,31 @@ Aliases:
 www.google.com has address 172.217.18.196
 www.google.com has IPv6 address 2a00:1450:4007:80e::2004
 www.google.com has HTTP service bindings 1 . alpn="h2,h3"
+```
 
+Now, we can use this DNS server on hosts:
+```bash
 user@dnsrecur:~$ echo "nameserver 127.0.0.1" | sudo tee /etc/resolv.conf > /dev/null
-
 user@dnsrecur:~$ host www.google.fr
 www.google.fr has address 142.250.201.163
 www.google.fr has IPv6 address 2a00:1450:4007:81a::2003
 www.google.fr has HTTP service bindings 1 . alpn="h2,h3"
+```
+Update all nodes. The router will be special because it receives a DNS server from Virtualbox NAT interface. You must disable it:
 
-user@node1:~$ echo "nameserver 192.168.45.1" | sudo tee /etc/resolv.conf > /dev/null
-user@node1:~$ host www.google.com
-www.google.com has address 172.217.18.196
-www.google.com has IPv6 address 2a00:1450:4007:805::2004
-www.google.com has HTTP service bindings 1 . alpn="h2,h3"
-
+```bash
 user@router:~$ cat /etc/dhcpcd.conf
-…
+..
 nohook resolv.conf
+```
+Then, you can update your DNS in router's resolv.conf.
 
-user@router:~$ echo "nameserver 192.168.45.1" | sudo tee /etc/resolv.conf > /dev/null
+## Configuring authoritative DNS
 
-user@router:~$ cat /etc/resolv.conf
-nameserver 192.168.45.1
+The authoritative DNS is required to serve the DNS zone 'lab.lan'. It's IP address is 192.168.45.2/24 and hostname is dnsauth.
 
-user@router:~$ host www.google.com
-www.google.com has address 172.217.18.196
-www.google.com has IPv6 address 2a00:1450:4007:805::2004
-www.google.com has HTTP service bindings 1 . alpn="h2,h3"
-
-== dnsauth ==
-
-user@dnsauth:~$ cat /etc/hostname
-dnsauth
-
-user@dnsauth:~$ cat /etc/hosts
-127.0.0.1       localhost
-127.0.1.1       dnsauth.lab.lan dnsauth
-
-# The following lines are desirable for IPv6 capable hosts
-::1     localhost ip6-localhost ip6-loopback
-ff02::1 ip6-allnodes
-ff02::2 ip6-allrouters
-
-user@dnsauth:~$ cat /etc/network/interfaces
-# This file describes the network interfaces available on your system
-# and how to activate them. For more information, see interfaces(5).
-
-source /etc/network/interfaces.d/*
-
-# The loopback network interface
-auto lo
-iface lo inet loopback
-
-# The primary network interface
-allow-hotplug enp0s3
-iface enp0s3 inet static
-        address 192.168.45.2/24
-        gateway 192.168.45.254
-
-user@dnsauth:~$ echo "nameserver 192.168.45.1" | sudo tee /etc/resolv.conf > /dev/null
-
+You have ton install bind9 and and adjust configuration:
+```bash
 user@dnsauth:~$ cat /etc/bind/named.conf.options
 options {
         directory "/var/cache/bind";
@@ -294,7 +260,10 @@ options {
         listen-on-v6 { none; };
         recursion no;
 };
+```
 
+We declare zones:
+```bash
 user@dnsauth:~$ cat /etc/bind/named.conf.local
 //
 // Do any local configuration here
@@ -311,7 +280,10 @@ zone "45.168.192.in-addr.arpa" {
     file "/etc/bind/zones/db.192.168.45";
     allow-query { any; };
 };
+```
 
+The direct zone:
+```bash
 user@dnsauth:~$ cat /etc/bind/zones/db.lab.lan
 $TTL 3600
 @   IN  SOA dnsauth.lab.lan. admin.lab.lan. (
@@ -327,7 +299,10 @@ dnsauth   IN  A    192.168.45.2
 dnsrecur  IN  A    192.168.45.1
 node1     IN  A    192.168.45.11
 node2     IN  A    192.168.45.12
+```
 
+The reverse zone:
+```bash
 user@dnsauth:~$ cat /etc/bind/zones/db.192.168.45
 $TTL 3600
 @   IN  SOA dnsauth.lab.lan. admin.lab.lan. (
@@ -343,9 +318,15 @@ $TTL 3600
 1   IN  PTR dnsrecur.lab.lan.
 11  IN  PTR node1.lab.lan.
 12  IN  PTR node2.lab.lan.
+```
 
+Adjust bind9 permissions:
+```bash
 user@dnsauth:~$ sudo chown -R bind:bind /etc/bind/zones
-user@dnsauth:~$ sudo vim.tiny /etc/bind/named.conf.options
+```
+
+Verify zones:
+```bash
 user@dnsauth:~$ named-checkconf
 user@dnsauth:~$ named-checkzone lab.lan /etc/bind
 bind/                   bindresvport.blacklist
@@ -355,15 +336,20 @@ OK
 user@dnsauth:~$ named-checkzone 45.168.192.in-addr.arpa /etc/bind/zones/db.192.168.45
 zone 45.168.192.in-addr.arpa/IN: loaded serial 2025100601
 OK
+```
 
+Restart and check bind9:
+```bash
 user@dnsauth:~$ sudo systemctl restart bind9
-
 user@dnsauth:~$ sudo grep zone /var/log/syslog
 2025-10-20T12:45:01.839269+02:00 dnsauth named[1124]: managed-keys-zone: loaded serial 2
 2025-10-20T12:45:01.839408+02:00 dnsauth named[1124]: zone 45.168.192.in-addr.arpa/IN: loaded serial 2025100601
 2025-10-20T12:45:01.839525+02:00 dnsauth named[1124]: zone lab.lan/IN: loaded serial 2025100601
 2025-10-20T12:45:01.839719+02:00 dnsauth named[1124]: all zones loaded
+```
 
+Check effective resolution of lab.lan:
+```bash
 user@dnsauth:~$ host node1.lab.lan 127.0.0.1
 Using domain server:
 Name: 127.0.0.1
@@ -382,9 +368,13 @@ Aliases:
 
 user@dnsauth:~$ host node1.lab.lan
 Host node1.lab.lan not found: 3(NXDOMAIN)
+```
+It fails because there is no link between your recursive and authoritative DNS.
 
-Why ??
+## Declare authoritative DNS against recursive DNS
 
+We declare a forward in recursive DNS for lab.lan zone:
+```bash
 user@dnsrecur:~$ cat /etc/bind/named.conf.local
 //
 // Do any local configuration here
@@ -401,19 +391,28 @@ zone "45.168.192.in-addr.arpa" {
     forward only;
     forwarders { 192.168.45.2; };
 };
+```
 
+Again, we check configuration and restart:
+```bash
 user@dnsrecur:~$ named-checkconf
-
 user@dnsrecur:~$ sudo systemctl restart bind9
+```
 
+Test from router:
+```bash
 user@router:~$ host node1.lab.lan
 node1.lab.lan has address 192.168.45.11
 
 user@router:~$ host 192.168.45.11
 11.45.168.192.in-addr.arpa domain name pointer node1.lab.lan.
+```
 
+And update default DNS domain search on each node:
+```bash
 user@router:~$ echo "search lab.lan" | sudo tee -a /etc/resolv.conf > /dev/null
 user@node1:~$ echo "search lab.lan" | sudo tee -a /etc/resolv.conf > /dev/null
 user@node2:~$ echo "search lab.lan" | sudo tee -a /etc/resolv.conf > /dev/null
 user@dnsrecur:~$ echo "search lab.lan" | sudo tee -a /etc/resolv.conf > /dev/null
 user@dnsauth:~$ echo "search lab.lan" | sudo tee -a /etc/resolv.conf > /dev/null
+```
