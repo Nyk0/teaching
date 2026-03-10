@@ -42,12 +42,27 @@ You need:
 - a Debian installation ISO image,
 - the required packages installed.
 
+Create a regular user with sudo privileges :
+
+```bash
+useradd -m -s /bin/bash user
+passwd user
+apt-get install sudo
+usermod -a -G sudo user
+id user
+```
+
 Install the required packages:
 
 ```bash
-sudo apt update
-sudo apt install -y qemu-system-x86 qemu-utils qemu-system-gui \
-                    ovmf nbd-client fdisk parted kpartx util-linux
+sudo apt install -y qemu-system-x86 qemu-utils
+```
+
+Add regular user to kvm group :
+
+```bash
+ls -al /dev/kvm
+sudo usermod -a -G kvm user
 ```
 
 ---
@@ -75,10 +90,10 @@ Example:
 
 ## Part 1 — Create a Virtual Disk
 
-Create a virtual disk image in `qcow2` format with a size of **20 GiB**:
+Create a virtual disk image in `qcow2` format with a size of **10 GiB**:
 
 ```bash
-qemu-img create -f qcow2 vm1.qcow2 20G
+qemu-img create -f qcow2 vm1.qcow2 10G
 ```
 
 Display information about the disk image:
@@ -91,13 +106,19 @@ qemu-img info vm1.qcow2
 
 1. What is the size of the virtual disk?
 2. What is the disk format?
-3. Is the full 20 GiB immediately allocated on the host?
+3. Is the full 10 GiB immediately allocated on the host?
 
 ---
 
 ## Part 2 — Start the Virtual Machine
 
 You will now boot a VM from the Debian ISO image.
+
+Download ISO installation media :
+
+```bash
+wget https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-13.3.0-amd64-netinst.iso
+```
 
 Use the following command:
 
@@ -108,25 +129,13 @@ qemu-system-x86_64 \
   -smp 2 \
   -cpu host \
   -drive file=vm1.qcow2,format=qcow2,if=virtio \
-  -cdrom debian-13.iso \
+  -cdrom debian-13.3.0-amd64-netinst.iso \
   -boot d \
   -nic user,model=virtio-net-pci \
-  -vnc :1
+  -display none \
+  -vnc 127.0.0.1:1 \
+  -audiodev none,id=noaudio
 ```
-
-### Understanding the Command
-
-Make sure you understand the role of the following options:
-
-- `-enable-kvm`
-- `-m 2048`
-- `-smp 2`
-- `-cpu host`
-- `-drive file=vm1.qcow2,format=qcow2,if=virtio`
-- `-cdrom debian-13.iso`
-- `-boot d`
-- `-nic user,model=virtio-net-pci`
-- `-vnc :1`
 
 ### Questions
 
@@ -139,12 +148,18 @@ Make sure you understand the role of the following options:
 
 ## Part 3 — Connect to the Installer with VNC
 
-The VM exports its display through VNC on display `:1`.
+The VM exports its display through VNC on display `127.0.0.1:1`.
+
+Install a vnc client:
+
+```bash
+sudo apt install xtightvncviewer
+```
 
 Connect to it with a VNC client using:
 
-```text
-localhost:5901
+```bash
+xtightvncviewer localhost:5901
 ```
 
 Once connected:
@@ -160,6 +175,21 @@ When the installation is complete, log in once to verify that the system boots c
 ---
 
 ## Part 4 — Inspect the Guest Network
+
+Restart the guest:
+
+```bash
+qemu-system-x86_64 \
+  -enable-kvm \
+  -m 2048 \
+  -smp 2 \
+  -cpu host \
+  -drive file=vm1.qcow2,format=qcow2,if=virtio \
+  -nic user,model=virtio-net-pci \
+  -display none \
+  -vnc 127.0.0.1:1 \
+  -audiodev none,id=noaudio
+```
 
 Once logged into the guest system, run the following commands:
 
@@ -200,6 +230,8 @@ Why is it important to shut down the VM cleanly before inspecting the disk image
 ## Part 6 — Explore the Disk Image with NBD
 
 Now that the VM is stopped, you will inspect the disk image manually from the host.
+
+  nbd-client fdisk parted kpartx util-linux
 
 ### Step 1 — Load the NBD module
 
