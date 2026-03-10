@@ -216,7 +216,7 @@ Observe the network configuration.
 When you have finished inspecting the guest, shut it down cleanly from inside the VM:
 
 ```bash
-sudo poweroff
+sudo shutown -h now
 ```
 
 Wait until the QEMU process exits.
@@ -231,7 +231,13 @@ Why is it important to shut down the VM cleanly before inspecting the disk image
 
 Now that the VM is stopped, you will inspect the disk image manually from the host.
 
-  nbd-client fdisk parted kpartx util-linux
+### Requirements
+
+Install nbd tools:
+
+```bash
+sudo apt install nbd-client fdisk parted kpartx
+```
 
 ### Step 1 — Load the NBD module
 
@@ -305,35 +311,19 @@ find /mnt/vm1 -maxdepth 2 | head -100
 
 ---
 
-## Part 8 — Inspect the EFI Partition (if present)
+## Part 8 — Inject SSH key for user
 
-If the VM was installed in UEFI mode, you may have an EFI system partition.
+Tips:
 
-Create a mount point:
-
-```bash
-sudo mkdir -p /mnt/efi
-```
-
-Mount the EFI partition, for example:
+Generate SSH keys (on host):
 
 ```bash
-sudo mount /dev/nbd0p1 /mnt/efi
+ssh-keygen -t rsa -b 4096 -f vm_key
 ```
 
-Inspect its contents:
+Public part must reside in **~/.ssh/authorized_keys**.
 
-```bash
-find /mnt/efi -maxdepth 3 -type f
-```
-
-### Questions
-
-1. Do you find an `EFI` directory?
-2. Do you see files related to Debian boot?
-3. What is the difference between the EFI partition and the Linux root partition?
-
----
+Adjust **/etc/ssh/sshd_config** to allow only public key authentication.
 
 ## Part 9 — Clean Up
 
@@ -341,7 +331,6 @@ Unmount the mounted partitions:
 
 ```bash
 sudo umount /mnt/vm1
-sudo umount /mnt/efi 2>/dev/null || true
 ```
 
 Disconnect the NBD device:
@@ -377,34 +366,7 @@ Answer the following questions in your report.
 ### Boot and Filesystems
 
 10. Where are the boot files located?
-11. What is the role of the EFI partition?
-12. What is the difference between the bootloader files and the Linux kernel files?
-
----
-
-## Deliverables
-
-You must submit:
-
-1. the exact command used to create the disk image,
-2. the exact QEMU command line used to boot the VM,
-3. a screenshot of the Debian installation through VNC,
-4. the output of:
-
-```bash
-qemu-img info vm1.qcow2
-```
-
-5. the output of:
-
-```bash
-sudo fdisk -l /dev/nbd0
-lsblk /dev/nbd0
-```
-
-6. a short description of the partition layout,
-7. a short explanation of the guest network configuration,
-8. a short explanation of what you observed after mounting the guest filesystem.
+11. What is the difference between the bootloader files and the Linux kernel files?
 
 ---
 
@@ -422,13 +384,15 @@ qemu-system-x86_64 \
   -cpu host \
   -drive file=vm1.qcow2,format=qcow2,if=virtio \
   -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22 \
-  -vnc :1
+  -display none \
+  -vnc 127.0.0.1:1 \
+  -audiodev none,id=noaudio
 ```
 
 Then try to connect from the host with:
 
 ```bash
-ssh -p 2222 <guest-user>@127.0.0.1
+ssh -i vm_key -p 2222 user@127.0.0.1
 ```
 
 ### Extension Questions
@@ -436,19 +400,3 @@ ssh -p 2222 <guest-user>@127.0.0.1
 1. What does `hostfwd=` do?
 2. Why is this useful in a NAT configuration?
 3. What changes from the guest point of view?
-
----
-
-## Conclusion
-
-This lab introduced the most direct way to create and use a virtual machine with QEMU/KVM.
-
-You have worked with:
-
-- a manually created `qcow2` disk image,
-- a VM booted from an ISO,
-- a NAT-based virtual network interface,
-- a VNC-exported graphical installation,
-- and offline disk analysis through NBD.
-
-This approach gives a concrete understanding of what a virtual machine really is: a process, a set of virtual devices, and a disk image file.
