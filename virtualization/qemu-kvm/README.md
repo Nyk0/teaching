@@ -273,9 +273,8 @@ lsblk /dev/nbd0
 ### Questions
 
 1. How many partitions are present?
-2. Do you see an EFI partition?
-3. Do you see a Linux root partition?
-4. Is the partition layout the same as what you selected during installation?
+2. Do you see a Linux root partition?
+3. Is the partition layout the same as what you selected during installation?
 
 ---
 
