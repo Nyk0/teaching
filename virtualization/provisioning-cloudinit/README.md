@@ -120,6 +120,16 @@ Wait for installation and test with your ssh key:
 ssh -p 2222 -i key_vm ubuntu@127.0.0.1
 ```
 
+Logout from your virtual machine ans expand the qcow2 disk:
+
+
+
+sudo fdisk /dev/vda
+sudo growpart /dev/vda
+sudo growpart /dev/vda 1
+sudo resize2fs /dev/vda1
+df -h
+
 ---
 
 # Part 2 — Method 1: Cloud-Init via HTTP
