@@ -62,12 +62,6 @@ You may rename it for convenience:
 mv noble-server-cloudimg-amd64.img vm-base.qcow2
 ```
 
-Create a working copy for the lab:
-
-```bash
-qemu-img create -f qcow2 -b vm-base.qcow2 vm1.qcow2
-```
-
 ---
 
 ## 2. Create a Cloud-Init configuration directory
@@ -79,40 +73,51 @@ cd cloudinit-lab
 
 Create the following files.
 
-### `user-data`
+### `user-data.yaml`
 
 ```yaml
 #cloud-config
-hostname: cloudinit-vm
-users:
-  - name: student
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    groups: sudo
-    shell: /bin/bash
-    ssh_authorized_keys:
-      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCexampleReplaceThisWithARealPublicKey
-
-package_update: true
-packages:
-  - curl
-  - vim
-  - htop
-
-write_files:
-  - path: /etc/motd
-    content: |
-      Welcome to the Cloud-Init lab VM.
-      This machine was configured automatically.
-
-runcmd:
-  - echo "Cloud-Init provisioning completed" > /tmp/cloudinit-success
+password: azerty
+chpasswd:
+  expire: False
+ssh_pwauth: True
+ssh_authorized_keys:
+  - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABA...
 ```
 
-### `meta-data`
+### `meta-data.yaml`
 
 ```yaml
 instance-id: vm1
 local-hostname: cloudinit-vm
+```
+
+Then, you can create the seed.img:
+
+```bash
+cloud-localds my-seed.img user-data.yaml my-meta-data.yaml
+```
+
+Launch the virtual machine:
+
+```bash
+qemu-system-x86_64 \
+  -enable-kvm \
+  -m 4096 \
+  -smp 2 \
+  -cpu host \
+  -drive file=vm-base.qcow2,format=qcow2,if=virtio \
+  -drive format=raw,file=seed.img,if=virtio \
+  -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22 \
+  -display none \
+  -vnc 127.0.0.1:1 \
+  -audiodev none,id=noaudio
+```
+
+Wait for installation and test with your ssh key:
+
+```bash
+ssh -p 2222 -i key_vm ubuntu@127.0.0.1
 ```
 
 ---
@@ -183,10 +188,6 @@ If students use an installation workflow or a custom image-building process, the
 Log into the VM and check:
 
 ```bash
-hostname
-id student
-ls -l /tmp/cloudinit-success
-cat /etc/motd
 cloud-init status --long
 ```
 
