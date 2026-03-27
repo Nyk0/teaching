@@ -83,6 +83,9 @@ chpasswd:
 ssh_pwauth: True
 ssh_authorized_keys:
   - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABA...
+storage:
+  layout:
+    name: direct
 ```
 
 ### `meta-data.yaml`
