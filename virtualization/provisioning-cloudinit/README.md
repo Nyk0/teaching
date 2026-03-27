@@ -95,7 +95,7 @@ local-hostname: cloudinit-vm
 Then, you can create the seed.img:
 
 ```bash
-cloud-localds my-seed.img user-data.yaml meta-data.yaml
+cloud-localds seed.img user-data.yaml meta-data.yaml
 ```
 
 Launch the virtual machine:
