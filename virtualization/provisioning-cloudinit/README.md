@@ -95,7 +95,7 @@ local-hostname: cloudinit-vm
 Then, you can create the seed.img:
 
 ```bash
-cloud-localds my-seed.img user-data.yaml my-meta-data.yaml
+cloud-localds my-seed.img user-data.yaml meta-data.yaml
 ```
 
 Launch the virtual machine:
@@ -122,14 +122,14 @@ ssh -p 2222 -i key_vm ubuntu@127.0.0.1
 
 Logout from your virtual machine ans expand the qcow2 disk:
 
-
-
+```bash
+qemu-img resize vm-base.qcow2 +10G
 sudo fdisk /dev/vda
 sudo growpart /dev/vda
 sudo growpart /dev/vda 1
 sudo resize2fs /dev/vda1
 df -h
-
+```
 ---
 
 # Part 2 — Method 1: Cloud-Init via HTTP
