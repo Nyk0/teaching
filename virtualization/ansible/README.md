@@ -126,24 +126,54 @@ Create the file `playbook.yaml`:
 
 ```yaml
 ---
-- name: Apply common configuration to all hosts
-  hosts: all
-  become: true
-  gather_facts: true
-  roles:
-    - common
-
-- name: Configure web servers
-  hosts: webservers
-  become: true
-  gather_facts: true
-  roles:
-    - web
-
-- name: Configure database servers
-  hosts: dbservers
-  become: true
-  gather_facts: true
-  roles:
-    - db
+- hosts: all
+  gather_facts: false
+  tasks:
+    - name: Apply common configuration to all hosts
+      include_role:
+        name: common
+- hosts: webservers
+  gather_facts: false
+  tasks:
+    - name: Configure web servers
+      include_role:
+        name: web
+- hosts: dbservers
+  gather_facts: false
+  tasks:
+    - name: Configure database servers
+      include_role:
+        name: db
 ```
+
+Alternative, you can define two files `dbservers.yaml` and `webservers.yaml`:
+
+```yaml
+# dbservers.yaml
+---
+- hosts: dbservers
+  gather_facts: false
+  tasks:
+    - name: Apply common configuration to all hosts
+      include_role:
+        name: common
+    - name: Configure database servers
+      include_role:
+        name: db
+```
+
+```yaml
+# webservers.yaml
+---
+- hosts: dbservers
+  gather_facts: false
+  tasks:
+    - name: Apply common configuration to all hosts
+      include_role:
+        name: common
+    - name: Configure web servers
+      include_role:
+        name: web
+```
+
+
