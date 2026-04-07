@@ -100,8 +100,8 @@ ansible-lab/
 ├── host_vars/
 │   ├── www1.yaml
 │   ├── db1.yaml
-│   ├── node1.yaml
-│   └── node2.yaml
+│   ├── unassigned1.yaml
+│   └── unassigned2.yaml
 └── roles/
     ├── common/
     │   └── tasks/
@@ -176,4 +176,28 @@ Alternative, you can define two files `dbservers.yaml` and `webservers.yaml`:
         name: web
 ```
 
+---
 
+## Create the inventory
+
+Create the file `infrastructure.yaml`:
+
+```yaml
+all:
+  hosts:
+    unassigned[1:2]:
+  children:
+    dbservers:
+      hosts:
+        db1:
+...
+```
+
+And a file for each server, e.g. host_vars/db1.yaml:
+
+(venv-ansible) ansible@ansible:~/magi/trixie-ansible-playbook$ less inventories/
+ansible_host: "172.16.64.46"
+mgmt_mac: "d0:43:1e:a7:3c:21"
+mgmt_ip: "172.16.0.46"
+bmc_ip: "172.16.32.46"
+bios: "legacy"
