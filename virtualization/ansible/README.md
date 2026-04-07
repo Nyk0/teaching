@@ -193,7 +193,7 @@ all:
 ...
 ```
 
-And a file for each server, e.g. host_vars/db1.yaml:
+And a file for each server, e.g. `host_vars/db1.yaml`:
 
 ```yaml
 ansible_host: "10.10.1.2"
@@ -201,3 +201,34 @@ mgmt_mac: "d0:43:1e:a7:3c:21"
 bios: "legacy"
 ...
 ```
+
+---
+
+## Running a task skeleton
+
+We will take base packages installation as an example.
+
+Fill in the file `group_vars/all.yaml` (this must map a group):
+
+```yaml
+base_packages:
+  - vim
+  - screen
+  - ...
+```
+
+From now, this variable is known to every server in 'all' group.
+
+We can define a role "common" that embeds a task that install the packages in `roles/common/tasks/main.yaml`:
+
+```yaml
+---
+- name: Install base packages
+  ansible.builtin.apt:
+    name: "{{ item }}"
+  with_items: "{{ base_packages }}"
+
+```
+
+Good luck !
+
