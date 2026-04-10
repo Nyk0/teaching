@@ -165,7 +165,7 @@ Alternative, you can define two files `dbservers.yaml` and `webservers.yaml`:
 ```yaml
 # webservers.yaml
 ---
-- hosts: dbservers
+- hosts: webservers
   gather_facts: false
   tasks:
     - name: Apply common configuration to all hosts
